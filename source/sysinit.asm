@@ -1,6 +1,8 @@
-org 0x9000
+org 10000h
 bits 16
 start:
+	mov ax, 1000h
+	mov ds, ax
 	mov si, welcome_string
 	call k_puts
 k_loop:
