@@ -1,0 +1,4 @@
+megs: 256
+ata0: enabled=1, ioaddr1=0x1f0, ioaddr2=0x3f0, irq=14
+ata0-master: type=disk, path=./Kernel.vmdk, cylinders=0, heads=4, spt=16, mode=vmware4
+boot: disk

@@ -1,5 +1,6 @@
 org 7C00h
 bits 16
+section .text
 ; boot.bin 由 boot.asm 汇编得到. 负责加载 sysinit.bin 到 0x40000
 
 ;Disk Address Packet
@@ -22,7 +23,25 @@ struc SectorFrame
 	.ReadWrite 	resd 1
 endstruc
 
+%define DriveNum_SYSINIT 08h
+%define BlockCount_SYSINIT (2000h - 1000h) / 512
+%define Buffer_SYSINIT (80200h)
+
+%define DriveNum_MAIN 10h
+%define BlockCount_MAIN (4000h - 2000h) / 512
+%define Buffer_MAIN (10000h)
+
 start:
+	mov ax, 07c0h
+	mov ds, ax
+	mov ax, 8000h
+	mov es, ax
+	mov cx, 200h
+	xor si, si
+	xor di, di
+	rep movsb
+	jmp 8000h:(go - 7c00h)
+go:
 	cli
 	xor ax, ax
 	mov ds, ax
@@ -31,27 +50,24 @@ start:
 	mov sp, 7c00h
 	sti
 load_sysinit:
-	push dword 1
-	push dword 08h
-	push dword 10000h
+	; 加载 sysinit 到 9000:0000 (90000h)
+	push dword BlockCount_SYSINIT
+	push dword DriveNum_SYSINIT
+	push dword Buffer_SYSINIT		; dest 9000:0000
 	call k_loadsector
-	push word 1000h
-	push word 0h
+	jc .load_failed
+	push dword BlockCount_MAIN
+	push dword DriveNum_MAIN
+	push dword Buffer_MAIN		; dest 0000:0000
+	call k_loadsector
+	jc .load_failed
+	push word 8000h 				; segment
+	push word 0200h					; offset
 	retf
+.load_failed:
+
 k_loop:
 	jmp k_loop
-
-
-k_puts:
-	mov ah, 0Eh
-.repeat:
-	lodsb
-	cmp al, 0
-	je .done
-	int 10h
-	jmp .repeat
-.done:
-	ret
 
 k_loadsector:
 ;{
@@ -243,6 +259,9 @@ times 1000h-($-$$) db 0
 SYSINIT_START:
 incbin "./sysinit.bin"
 SYSINIT_END: align 10h
-
+times 2000h-($-$$) db 0
+dw 0AABBh
+; incbin "./main.bin"
+; times 4000h-($-$$) db 0
 times 80000h - 3 -($-$$) db 0
 db 0EEh, 0h, 0FFh
