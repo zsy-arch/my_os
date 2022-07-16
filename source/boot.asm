@@ -6,21 +6,21 @@ start:
 	xor ax, ax
 	mov ss, ax
 	mov sp, 7c00h
+	mov ax, 7e0h
+	mov es, ax
 	sti
 	mov si, welcome_string
 	call k_puts
 load_sysinit:
 	mov dx, 0h
 	mov cx, 0002h
-	mov bx, 0200h
+	mov bx, 0h
 	mov ax, 0201h
 	int 13h
 	jnc ok_load_sysinit
 	mov dx, 0h
 	mov ax, 0h
 	int 13h
-	mov si, load_init_retry
-	call k_puts
 	jmp load_sysinit
 ok_load_sysinit:
 	mov si, load_init_ok1

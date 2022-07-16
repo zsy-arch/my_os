@@ -18,7 +18,3 @@ k_puts:
 data:
 welcome_string:
 	db "System started successfully.", 0Ah, 0Dh, 0h
-times 2045 - ($ - $$) db 0
-db 0xEE
-db 0x00
-db 0xFF

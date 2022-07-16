@@ -8,7 +8,7 @@ all: Kernel.bin
 
 Kernel.bin: boot.bin sysinit.bin
 	# $(PY) $(BUILD_TOOL) -o $@ $^
-	$(DD) if=/dev/zero of=$@ bs=4M count=1
+	$(DD) if=/dev/zero of=$@ bs=1450000 count=1
 	$(DD) if=boot.bin of=Kernel.bin seek=0 bs=512 conv=notrunc
 	$(DD) if=sysinit.bin of=Kernel.bin seek=1 bs=512 conv=notrunc
 
