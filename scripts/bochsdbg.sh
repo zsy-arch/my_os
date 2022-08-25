@@ -1,0 +1,1 @@
+bochsdbg -q -f ./scripts/bochs.bxrc

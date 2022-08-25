@@ -20,7 +20,8 @@ struc SectorFrame
 	.ReadWrite 	resd 1
 endstruc
 
-
+; 电脑启动，ip=0x7c00
+; 写代码，编译 => 放硬盘第一个扇区
 ; 布局
 ; 0000:0000 - 之后用于存放 main.bin
 ; 3000:0000 - 之后用于存放系统信息
@@ -48,10 +49,11 @@ pm_string:
 init_main:
 	lea si, [welcome_string]
 	push si
+	; 输出 loaded successfully
 	call k_puts
-	; 为进入保护模式做准备
-	; call k_init_protected_mode
-
+	; 实模式 -> 保护模式
+	call k_init_protected_mode
+	; 输出 started successfully
 	lea si, [pm_string]
 	push si
 	call k_puts
@@ -66,7 +68,10 @@ k_init_protected_mode:
 	mov bp, sp
 	; 正式开始准备进入保护模式
 	cli
+	; 开启 A20
 	call k_enable_a20
+	; 加载 GDT/IDT (segment descriptor)
+	call k_loadsd
 	sti
 .done:
 	pop ds
@@ -92,6 +97,9 @@ empty_8042:
 	jnz empty_8042
 	ret
 
+k_loadsd:
+	ret
+
 k_puts:
 	push bp
 	mov bp, sp
@@ -112,7 +120,7 @@ k_puts:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; GDT
 
-%macro GDTDesc
+%macro GDTDesc 6
 	dw %6 	; 段限长1
 	dw %5	; 段基址1
 	db %4	; 段基址2

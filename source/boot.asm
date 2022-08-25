@@ -1,7 +1,7 @@
 org 7C00h
 bits 16
 section .text
-; boot.bin 由 boot.asm 汇编得到. 负责加载 sysinit.bin 到 0x40000
+; boot.bin 由 boot.asm 汇编得到. 负责加载 sysinit.bin 到 8000:0200
 
 ;Disk Address Packet
 struc DAP
@@ -32,6 +32,7 @@ endstruc
 %define Buffer_MAIN (10000h)
 
 start:
+	; 把当前扇区复制到 8000:0000
 	mov ax, 07c0h
 	mov ds, ax
 	mov ax, 8000h
@@ -40,7 +41,8 @@ start:
 	xor si, si
 	xor di, di
 	rep movsb
-	jmp 8000h:(go - 7c00h)
+	; 跳转到 8000:go
+	jmp 8000h:(go - start)
 go:
 	cli
 	xor ax, ax
@@ -50,11 +52,12 @@ go:
 	mov sp, 7c00h
 	sti
 load_sysinit:
-	; 加载 sysinit 到 9000:0000 (90000h)
+	; 加载 sysinit 到 8000:0200 (80200h)
 	push dword BlockCount_SYSINIT
 	push dword DriveNum_SYSINIT
-	push dword Buffer_SYSINIT		; dest 9000:0000
+	push dword Buffer_SYSINIT		; dest 8000:0200
 	call k_loadsector
+	; 加载失败
 	jc .load_failed
 	push dword BlockCount_MAIN
 	push dword DriveNum_MAIN
@@ -64,8 +67,12 @@ load_sysinit:
 	push word 8000h 				; segment
 	push word 0200h					; offset
 	retf
+	; jmp 8000:0200
 .load_failed:
+; push 0x401000
+; ret
 
+; jmp 0x401000
 k_loop:
 	jmp k_loop
 
@@ -222,6 +229,7 @@ times 510-64-($-$$) db 0
 	dd  00007fffh
 ; 以下两行 使用GCC -m16时不使用
 times 510 - ($ - $$) db 0
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 dw 0AA55h
 	db 0,0,0      ;UCHAR     Jump[3];			// 0x00
 	db  "NTFS    " ;UCHAR     OEMID[8];			// 0x03
