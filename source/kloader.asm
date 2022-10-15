@@ -50,20 +50,11 @@ pm_string:
 	db "System started successfully...", 0Ah, 0Dh, 0h
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 init_main:
-	lea si, [welcome_string]
-	push si
-	; 输出 loaded successfully
-	call k_puts
 	; 实模式 -> 保护模式
 	call k_init_protected_mode
-	; 输出 started successfully
-	lea si, [pm_string]
-	push si
-	call k_puts
-	jmp k_loop
-k_loop:
+go_main:
 	nop
-	jmp k_loop
+	jmp go_main
 k_init_protected_mode:
 	push bp
 	push si

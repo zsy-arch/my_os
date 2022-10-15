@@ -39,17 +39,11 @@ go:
 	; sti
 load_sysinit:
 	; 加载 sysinit 到 8000:0200 (08200h)
-	lea si, [welcome_string]
-	push si
-	call k_puts
 	call read_sysinit
 	jc .load_failed
 	jmp 0h:0100h
 	; jmp $
 .load_failed:
-	lea si, [error_string]
-	push si
-	call k_puts
 	jmp $
 
 read_sysinit:
