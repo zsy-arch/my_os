@@ -1,6 +1,7 @@
-org 0h
+org 0100h
 
 bits 16
+
 struc DAP
 	.PacketSize 	resb 1
 	.Reserved 		resb 1
@@ -29,22 +30,23 @@ endstruc
 ; 4000:0000 - 4000:ffff 存放 sysinit 代码
 ;
 start:
+	nop
+	nop
+	nop
+	nop
 	cli
-	mov ax, 08020h
+	xor ax, ax
 	mov ds, ax
-	mov ax, 080f0h
 	mov ss, ax
-	mov ax, 0h
+	mov ax, 8fffh
 	mov sp, ax
 	sti
 	jmp init_main
-	nop
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 welcome_string:
 	db "System loaded successfully...", 0Ah, 0Dh, 0h
 pm_string:
 	db "System started successfully...", 0Ah, 0Dh, 0h
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 init_main:
 	lea si, [welcome_string]
@@ -98,6 +100,7 @@ empty_8042:
 	ret
 
 k_loadsd:
+
 	ret
 
 k_puts:
@@ -116,10 +119,8 @@ k_puts:
 .done:
 	pop bp
 	ret 02h
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; GDT
-
 %macro GDTDesc 6
 	dw %6 	; 段限长1
 	dw %5	; 段基址1
@@ -185,6 +186,6 @@ k_puts:
 ; B = 1 => 使用 32 位栈指针 ; B = 0 使用 16 位栈指针
 %define DB_16 00h  ;0000 0000
 %define DB_32 40h  ;0100 0000
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
