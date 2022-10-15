@@ -13,6 +13,9 @@ struc DAP
 	.LBNHigh 		resd 1
 endstruc
 
+%define KLOADER_LBNLOW (08h)
+%define KLOADER_BLOCKCOUNT (010h)
+
 start:
 	nop
 	nop
@@ -41,8 +44,8 @@ load_sysinit:
 	call k_puts
 	call read_sysinit
 	jc .load_failed
-	; jmp 0h:0100h
-	jmp $
+	jmp 0h:0100h
+	; jmp $
 .load_failed:
 	lea si, [error_string]
 	push si
@@ -59,10 +62,10 @@ read_sysinit:
 	mov si, sp
 	mov byte [si+DAP.PacketSize], 10h
 	mov byte [si+DAP.Reserved], 0h
-	mov word [si+DAP.BlockCount], 0010h
+	mov word [si+DAP.BlockCount], KLOADER_BLOCKCOUNT
 	mov word [si+DAP.BufferOffset], 0100h
 	mov word [si+DAP.BufferSegment], 0h
-	mov dword [si+DAP.LBNLow], 0008h
+	mov dword [si+DAP.LBNLow], KLOADER_LBNLOW
 	mov dword [si+DAP.LBNHigh], 0h
 	mov ah, 42h
 	mov dl, 80h
@@ -91,9 +94,11 @@ k_puts:
 	ret 02h
 
 welcome_string:
-	db "Welcome to JuanOS", 0dh, 0ah, 0h
+	db "Welcome to JuanOS", 0ah, 0dh, 0h
+ok_string:
+	db "Entering loader", 0ah, 0dh, 0h
 error_string:
-	db "Oops", 0dh, 0ah, 0h
+	db "Oops", 0ah, 0dh, 0h
 	times 510-64-($-$$) db 0
 	db  80h
 	db  00
@@ -141,9 +146,9 @@ times 1022-($-$$) db 0
 	dw  0AA55h
 ;------------------------------------------------------
 times 1000h-($-$$) db 0
-SYSINIT_START:
-incbin "./sysinit.bin"
-SYSINIT_END: align 10h
+KLOADER_START:
+incbin "./kloader.bin"
+KLOADER_END: align 10h
 times 2000h-($-$$) db 0
 ;------------------------------------------------------
 ; incbin "./main.bin"
