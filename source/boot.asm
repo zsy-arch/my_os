@@ -13,25 +13,7 @@ struc DAP
 	.LBNHigh 		resd 1
 endstruc
 
-struc SectorFrame
-	.DriveNum	resd 1
-	.LBNLow 	resd 1
-	.LBNHigh 	resd 1
-	.BlockCount resd 1
-	.Buffer 	resd 1
-	.ReadWrite 	resd 1
-endstruc
-
-%define DriveNum_SYSINIT (08h)
-%define BlockCount_SYSINIT (2000h - 1000h) / 200h
-%define Buffer_SYSINIT (0100h)
-
-%define DriveNum_MAIN 10h
-%define BlockCount_MAIN (4000h - 2000h) / 512
-%define Buffer_MAIN (10000h)
-
 start:
-	; 把当前扇区复制到 0800:0000
 	nop
 	nop
 	mov ax, 07c0h
@@ -57,10 +39,6 @@ load_sysinit:
 	lea si, [welcome_string]
 	push si
 	call k_puts
-	; push dword BlockCount_SYSINIT
-	; push dword DriveNum_SYSINIT
-	; push dword Buffer_SYSINIT		; dest 0000:0000
-	; call k_loadsector
 	call read_sysinit
 	jc .load_failed
 	; jmp 0h:0100h
@@ -76,150 +54,25 @@ read_sysinit:
 	mov ebp, esp
 	push bx
 	push es
-	xor ax, ax
-	mov es, ax
-	mov cx, 0009h
-	mov dh, 00h
+	push si
+	sub sp, 10h
+	mov si, sp
+	mov byte [si+DAP.PacketSize], 10h
+	mov byte [si+DAP.Reserved], 0h
+	mov word [si+DAP.BlockCount], 0010h
+	mov word [si+DAP.BufferOffset], 0100h
+	mov word [si+DAP.BufferSegment], 0h
+	mov dword [si+DAP.LBNLow], 0008h
+	mov dword [si+DAP.LBNHigh], 0h
+	mov ah, 42h
 	mov dl, 80h
-	mov bx, 0100h
-	mov al, 01h
-	mov ah, 02h
 	int 13h
+	add sp, 10h
+	pop si
 	pop es
 	pop bx
 	pop ebp
 	ret
-; k_loadsector:
-; ;{
-; 	push  ebp  
-; 	mov  ebp, esp 
-; 	sub  esp, 0E4h 
-; 	push  ebx  
-; 	push  esi  
-; 	push  edi  
-	
-; 	;int run = count / 64;
-; 	mov  eax,dword [ebp+0Eh] 
-; 	cdq              
-; 	and  edx, 3Fh 
-; 	add  eax, edx 
-; 	sar  eax, 6 
-; 	mov  dword [ebp-8], eax 
-	
-; 	;int mod = count % 64;
-; 	mov  eax, dword [ebp+0Eh] 
-; 	and  eax, 8000003Fh 
-; 	jns  .set_mod
-; 	dec  eax  
-; 	or  eax,0FFFFFFC0h 
-; 	inc  eax  
-	
-; .set_mod: 
-; 	mov  dword [ebp-14h], eax 
-
-; 	;for(int i=0; i<run; i++)
-; 	mov  dword [ebp-20h], 0 
-; 	jmp  _read
-	
-; _loop:
-; 	mov  eax,dword [ebp-20h] 
-; 	add  eax,1 
-; 	mov  dword [ebp-20h],eax 
-; _read:   
-;     mov  eax,dword [ebp-20h] 
-; 	cmp  eax,dword [ebp-8] 
-; 	jge  _left
-; 	;{
-; 	;ReadWriteSector(0x80, src, 0, 64, des, 0x42);
-; 	push  dword 42h
-; 	mov  eax, dword [ebp+6] 
-; 	push  eax  
-; 	push  dword 40h  
-; 	push  dword 0    
-; 	mov  ecx, dword [ebp+0Ah] 
-; 	push  ecx  
-; 	push  dword 80h  
-; 	call  k_readsector
-; 	add  esp, 24 
-
-; 	;src = src + 64;
-; 	mov  eax, dword [ebp+0Ah] 
-; 	add  eax, 40h 
-; 	mov  dword [ebp+0Ah], eax 
-; 	;des = des + 64*512;
-; 	mov  eax, dword [ebp+6] 
-; 	add  eax, 8000h 
-; 	mov  dword [ebp+6], eax 
-; 	;}
-; 	jmp  _loop
-
-; 	;if(mod)
-; _left:
-; 	cmp  dword [ebp-14h],0           
-;     je  .return
-; 	;{
-; 		;ReadWriteSector(0x80, src, 0, mod, des, 0x42);
-; 	push  dword 42h	
-; 	mov  eax, dword [ebp+6] 
-; 	push  eax  
-; 	mov  ecx, dword [ebp-14h] 
-; 	push  ecx  
-; 	push  dword 0    
-; 	mov  edx, dword [ebp+0Ah] 
-; 	push  edx  
-; 	push  dword 80h  
-; 	call  k_readsector
-; 	add  esp, 24
-; 	;}
-; ;}
-; .return:   
-;     pop  edi  
-; 	pop  esi  
-; 	pop  ebx  
-; 	add  esp, 0E4h 
-; 	mov  esp, ebp 
-; 	pop  ebp  
-; 	ret 12
-; k_readsector:
-; 	push  bp
-;     mov  bp, sp
-;     add  bp, 4
-;     push  ds
-;     push  si
-;     push  bx
-;     push  0
-;     pop  ds
-; 	sub  sp, 16
-; 	mov  si, sp
-; 	mov  byte [si+DAP.PacketSize], 10h        
-; 	mov  byte [si+DAP.Reserved], 0          
-; 	mov  al,byte [bp+SectorFrame.BlockCount]
-; 	mov  byte[si+DAP.BlockCount], al           
-; 	mov  byte[si+DAP.BlockCount+1], 0         
-; 	mov  eax, dword[bp+SectorFrame.Buffer]
-;     mov  bx, ax
-;     and  bx, 0fh     
-;     mov  word[si+DAP.BufferOffset], bx        
-;     shr  eax, 4
-;     mov  word[si+DAP.BufferSegment], ax        
-;     mov  eax, dword[bp+SectorFrame.LBNLow]
-;     mov  dword[si+DAP.LBNLow], eax            
-;     mov  eax, dword[bp+SectorFrame.LBNHigh]
-;     mov  dword[si+DAP.LBNHigh], eax            
-;     mov  ah, byte [bp+SectorFrame.ReadWrite]                                          
-;     mov  dl, byte [bp+SectorFrame.DriveNum]          
-;     int  13h
-;     jc   .error
-;     xor  eax, eax
-; .error:
-;     and  eax, 0000ffffh
-; 	add  sp, 16
-; 	pop  bx
-; 	pop  si
-; 	pop  ds
-; 	pop  bp
-; 	retn
-
 k_puts:
 	push bp
 	mov bp, sp
