@@ -42,15 +42,7 @@ start:
 	mov ax, 8fffh
 	mov sp, ax
 	sti
-    lea di, [welcome_string]
-    push di
-    call k_puts
 	jmp init_main
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-welcome_string:
-	db "Entering JuanOS...", 0h
-pm_string:
-	db "System started successfully...", 0h
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 init_main:
 	; 实模式 -> 保护模式
@@ -58,13 +50,13 @@ init_main:
 go_main:
 	nop
 	jmp go_main
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 k_init_protected_mode:
-	; 开启 A20
 	call k_enable_a20
-	; 加载 GDT/IDT (segment descriptor)
+    call k_enable_protection_paging
 .done:
 	ret
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 k_enable_a20:
 	call empty_8042
 	mov al, 0d1h
@@ -74,36 +66,17 @@ k_enable_a20:
 	out 060h, al
 	call empty_8042
 	ret
-
 empty_8042:
+    jmp $+2
+    jmp $+2
 	in al, 064h
 	test al, 02h
 	jnz empty_8042
 	ret
-k_puts:
-    push bp
-    mov bp, sp
-    push di
-    push bx
-    push ax
-    mov bh, 01h
-    mov bl, 07h
-    lea di, [bp+04h]
-    mov di, ds:[di]
-    mov ah, 0Eh
-.repeat:
-    mov al, ds:[di]
-    cmp al, 0
-    je .done
-    int 10h
-    inc di
-    jmp .repeat
-.done:
-    pop ax
-    pop bx
-    pop di
-    pop bp
-    ret 02h
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+k_enable_protection_paging:
+
+    ret
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; GDT
 %macro GDTDesc 6

@@ -35,25 +35,11 @@ go:
     mov es, ax
     mov sp, 0fffh
 load_sysinit:
-    mov ah, 0h
-    mov al, 02h
-    int 10h
-    lea di, [welcome_string]
-    push di
-    call k_puts
-
     call read_sysinit
     jc .load_failed
-    lea di, [ok_string]
-    push di
-    call k_puts
     jmp 0h:0100h
 .load_failed:
-    lea di, [error_string]
-    push di
-    call k_puts
     jmp $
-
 read_sysinit:
     push bp
     mov bp, sp
@@ -78,30 +64,6 @@ read_sysinit:
     pop bx
     pop bp
     ret
-k_puts:
-    push bp
-    mov bp, sp
-    push di
-    push bx
-    push ax
-    mov bh, 00h
-    lea di, [bp+04h]
-    mov di, ds:[di]
-    mov ah, 0Eh
-.repeat:
-    mov al, ds:[di]
-    cmp al, 0
-    je .done
-    int 10h
-    inc di
-    jmp .repeat
-.done:
-    pop ax
-    pop bx
-    pop di
-    pop bp
-    ret 02h
-
 welcome_string:
     db "Welcome to JuanOS...", 0h
 ok_string:
