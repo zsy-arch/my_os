@@ -56,21 +56,10 @@ go_main:
 	nop
 	jmp go_main
 k_init_protected_mode:
-	push bp
-	push si
-	push ds
-	mov bp, sp
-	; 正式开始准备进入保护模式
-	cli
 	; 开启 A20
 	call k_enable_a20
 	; 加载 GDT/IDT (segment descriptor)
-	call k_loadsd
-	sti
 .done:
-	pop ds
-	pop si
-	pop bp
 	ret
 
 k_enable_a20:
@@ -84,31 +73,32 @@ k_enable_a20:
 	ret
 
 empty_8042:
-	jmp $+3
-	jmp $+3
 	in al, 064h
 	test al, 02h
 	jnz empty_8042
 	ret
-
-k_loadsd:
-
-	ret
-
 k_puts:
 	push bp
 	mov bp, sp
-	add bp, 04h
-	mov bp, [bp]
+    push di
+    push bx
+    push ax
+    mov bh, 0h
+    mov bl, 07h
+    lea di, [bp+04h]
+	mov di, ds:[di]
 	mov ah, 0Eh
 .repeat:
-	mov al, ds:[bp]
+	mov al, ds:[di]
 	cmp al, 0
 	je .done
 	int 10h
-	inc bp
+	inc di
 	jmp .repeat
 .done:
+    pop ax
+    pop bx
+    pop di
 	pop bp
 	ret 02h
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

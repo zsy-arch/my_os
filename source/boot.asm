@@ -35,20 +35,23 @@ go:
 	mov ds, ax
 	mov ss, ax
 	mov es, ax
-	mov sp, 0200h
+	mov sp, 0fffh
 	; sti
 load_sysinit:
 	; 加载 sysinit 到 8000:0200 (08200h)
 	call read_sysinit
 	jc .load_failed
+	lea di, [welcome_string]
+	push di
+	call k_puts
 	jmp 0h:0100h
 	; jmp $
 .load_failed:
 	jmp $
 
 read_sysinit:
-	push ebp
-	mov ebp, esp
+	push bp
+	mov bp, sp
 	push bx
 	push es
 	push si
@@ -68,22 +71,30 @@ read_sysinit:
 	pop si
 	pop es
 	pop bx
-	pop ebp
+	pop bp
 	ret
 k_puts:
 	push bp
 	mov bp, sp
-	add bp, 04h
-	mov bp, [bp]
+    push di
+    push bx
+    push ax
+    mov bh, 0h
+    mov bl, 07h
+    lea di, [bp+04h]
+	mov di, ds:[di]
 	mov ah, 0Eh
 .repeat:
-	mov al, ds:[bp]
+	mov al, ds:[di]
 	cmp al, 0
 	je .done
 	int 10h
-	inc bp
+	inc di
 	jmp .repeat
 .done:
+    pop ax
+    pop bx
+    pop di
 	pop bp
 	ret 02h
 
