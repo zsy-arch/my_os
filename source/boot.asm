@@ -27,30 +27,31 @@ start:
     xor si, si
     xor di, di
     rep movsb
-    ; 跳转到 0800:go
     jmp 0800h:(go - start)
 go:
-    ; cli
     mov ax, 0800h
     mov ds, ax
     mov ss, ax
     mov es, ax
     mov sp, 0fffh
-    ; sti
 load_sysinit:
-    ; 加载 sysinit 到 8000:0200 (08200h)
-    call read_sysinit
-    jc .load_failed
     mov ah, 0h
     mov al, 02h
     int 10h
-
     lea di, [welcome_string]
     push di
     call k_puts
+
+    call read_sysinit
+    jc .load_failed
+    lea di, [ok_string]
+    push di
+    call k_puts
     jmp 0h:0100h
-    ; jmp $
 .load_failed:
+    lea di, [error_string]
+    push di
+    call k_puts
     jmp $
 
 read_sysinit:
@@ -83,8 +84,7 @@ k_puts:
     push di
     push bx
     push ax
-    mov bh, 0h
-    mov bl, 07h
+    mov bh, 00h
     lea di, [bp+04h]
     mov di, ds:[di]
     mov ah, 0Eh
@@ -103,11 +103,11 @@ k_puts:
     ret 02h
 
 welcome_string:
-    db "Welcome to JuanOS", 0ah, 0dh, 0h
+    db "Welcome to JuanOS...", 0h
 ok_string:
-    db "Entering loader", 0ah, 0dh, 0h
+    db "Ok", 0h
 error_string:
-    db "Oops", 0ah, 0dh, 0h
+    db "Oops", 0h
     times 510-64-($-$$) db 0
     db  80h
     db  00

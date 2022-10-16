@@ -42,12 +42,15 @@ start:
 	mov ax, 8fffh
 	mov sp, ax
 	sti
+    lea di, [welcome_string]
+    push di
+    call k_puts
 	jmp init_main
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 welcome_string:
-	db "System loaded successfully...", 0Ah, 0Dh, 0h
+	db "Entering JuanOS...", 0h
 pm_string:
-	db "System started successfully...", 0Ah, 0Dh, 0h
+	db "System started successfully...", 0h
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 init_main:
 	; 实模式 -> 保护模式
@@ -78,29 +81,29 @@ empty_8042:
 	jnz empty_8042
 	ret
 k_puts:
-	push bp
-	mov bp, sp
+    push bp
+    mov bp, sp
     push di
     push bx
     push ax
-    mov bh, 0h
+    mov bh, 01h
     mov bl, 07h
     lea di, [bp+04h]
-	mov di, ds:[di]
-	mov ah, 0Eh
+    mov di, ds:[di]
+    mov ah, 0Eh
 .repeat:
-	mov al, ds:[di]
-	cmp al, 0
-	je .done
-	int 10h
-	inc di
-	jmp .repeat
+    mov al, ds:[di]
+    cmp al, 0
+    je .done
+    int 10h
+    inc di
+    jmp .repeat
 .done:
     pop ax
     pop bx
     pop di
-	pop bp
-	ret 02h
+    pop bp
+    ret 02h
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; GDT
 %macro GDTDesc 6
