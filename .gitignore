@@ -1,2 +1,7 @@
 /.history/
 /*.bin
+/*.o
+/*.elf
+/*.vmdk
+/.vscode
+/.gdb_history
