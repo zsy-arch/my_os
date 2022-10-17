@@ -1,6 +1,6 @@
 org 0100h
 
-bits 16
+[bits 16]
 
 struc DAP
 	.PacketSize 	resb 1
@@ -20,10 +20,11 @@ struc SectorFrame
 	.Buffer 	resd 1
 	.ReadWrite 	resd 1
 endstruc
-%define KLOADER_BASE  0100h
+KLOADER_BASE  equ 0100h
+KL_CS equ 018h
+
 %define PROTECT_MODE  0001h
 %define ENABLE_PAGING (1h << 31)
-
 start:
 	nop
 	nop
@@ -46,6 +47,7 @@ go_main:
 	jmp go_main
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 k_init_protected_mode:
+	cli
 	call k_enable_a20
     call k_enable_protection_paging
 .done:
@@ -72,33 +74,51 @@ k_enable_protection_paging:
     push dword 0h
     popfd
     xor ax, ax
-    mov gs, ax
+    mov ds, ax
     mov es, ax
+    mov gs, ax
     mov fs, ax
     lgdt [GDT_Reg]
+    lidt [IDT_Reg]
+	push eax
+	mov ax, [GDT_Reg]
+	mov eax, [GDT_Reg + 02h]
+	pop eax
     mov eax, cr0
     or eax, PROTECT_MODE
     mov cr0, eax
-    ret
+.go_pm:
+	push word KL_CS
+	push word .ok
+    retf
+.ok:
+	nop
+	jmp .ok
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; GDT
-%macro GDTDesc 6
-	dw %6 	; SegLimit bit 0  -  bit 15
-	dw %5	; SegBase  bit 0  -  bit 15
-	db %4	; SegBase  bit 16 -  bit 23
-	db %3	; P|DPL|S|Type
-	db %2	; G|D/B|L|AVL|(SegLimit bit 16 - bit 19)
-	db %1	; SegBase  bit 24 -  bit 31
-%endmacro
-; G = 0 => 1B ~ 1MB	; G = 1 => 4K ~ 4GB
-%define G_0 00h
-%define G_1 80h
+;G|D/B|L|AVL|Segment limit 19:16
+%define G_0   00h  ;0000 0000
+%define G_1   80h  ;1000 0000
 
-; S = 0 => 系统段 ; S = 1 => 代码段或者是数据段
-%define S_0 00h
-%define S_1 10h
+%define DB_16 00h  ;0000 0000
+%define DB_32 40h  ;0100 0000
 
-;;;;;Type;;;;;
+%define L_0   00h  ;0000 0000
+%define L_1   20h  ;0010 0000
+
+%define AVL_0 00h  ;0000 0000
+%define AVL_1 10h  ;0001 0000
+
+;P|DPL|S|Type
+%define P_0   00h  ;0000 0000
+%define P_1   80h  ;1000 0000
+
+%define DPL_0 00h  ;0000 0000
+%define DPL_3 60h  ;0110 0000
+
+%define S_0   00h  ;0000 0000
+%define S_1   10h  ;0001 0000
+
+
 ;S=1
 %define DataType0(Read_Only)                         00h  ;0000 0000
 %define DataType1(Read_Only_accessed)                01h  ;0000 0001
@@ -135,24 +155,14 @@ k_enable_protection_paging:
 %define SystemType14(_32_bit_Interrupt_Gate)         0Eh  ;0000 1110
 %define SystemType15(_32_bit_Trap_Gate)              0Fh  ;0000 1111
 
-; P = 1 => 段存在于内存中 ; P = 0 => 不存在
-%define P_0 00h
-%define P_1 80h
-
-; D = 1 => 使用32位地址、32/8 位操作数 ; D = 0 => 使用16位地址、16/8 位操作数
-; B = 1 => 使用 32 位栈指针 ; B = 0 使用 16 位栈指针
-%define DB_16 00h  ;0000 0000
-%define DB_32 40h  ;0100 0000
-
-; L = 1 => 64 位模式 ; L = 0 => 兼容模式
-%define L_0   00h  ;0000 0000
-%define L_1   20h  ;0010 0000
-
-%define AVL_0 00h
-%define AVL_1 10h
-
-%define DPL_0 00h
-%define DPL_3 60h
+%macro GDTDesc 6
+    dw %6  ;Segment limit 15:00
+    dw %5  ;Base Address 15:00
+    db %4  ;Base Address 23:16
+    db %3  ;P|DPL|S|Type
+    db %2  ;G|D/B|L|AVL|Segment limit 19:16
+    db %1  ;Base 31:24
+%endmacro
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 GDT_begin:
 GDTDesc 00h, 00h, 00h, 00h, 0000h, 0000h
@@ -161,9 +171,19 @@ GDTDesc 00h, G_1|DB_32|L_0|AVL_0|0fh, P_1|DPL_0|S_1|CodeType10(Execute_Read), 00
 
 GDTDesc 00h, G_1|DB_32|L_0|AVL_0|0fh, P_1|DPL_0|S_1|DataType2(Read_Write), 00h, 0000h, 0ffffh
 
+GDTDesc 00h, G_1|DB_16|L_0|AVL_0|0fh, P_1|DPL_0|S_1|CodeType10(Execute_Read), 00h, 0000h, 0ffffh
+
 times GDT_begin + 1024 - $ db 0
 GDT_end:
+
+IDT_begin:
+	times 256 dq 0	
+IDT_end:
+
 GDT_Reg:
     dw GDT_end - GDT_begin - 1
-    dd GDT_begin + KLOADER_BASE
+    dd GDT_begin
 
+IDT_Reg:
+	dw	IDT_end - IDT_begin - 1
+	dd	IDT_begin

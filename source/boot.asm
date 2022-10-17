@@ -1,5 +1,5 @@
 org 0000h
-bits 16
+[bits 16]
 section .text
 
 ;Disk Address Packet
@@ -64,13 +64,7 @@ read_sysinit:
     pop bx
     pop bp
     ret
-welcome_string:
-    db "Welcome to JuanOS...", 0h
-ok_string:
-    db "Ok", 0h
-error_string:
-    db "Oops", 0h
-    times 510-64-($-$$) db 0
+times 510-64-($-$$) db 0
     db  80h
     db  00
     db  02
@@ -81,7 +75,7 @@ error_string:
     db  32
     dd  00000001h
     dd  00007fffh
-    times 510 - ($ - $$) db 0
+times 510 - ($ - $$) db 0
     dw 0AA55h
 ;------------------------------------------------------
     db 0,0,0      ;UCHAR     Jump[3];			// 0x00
