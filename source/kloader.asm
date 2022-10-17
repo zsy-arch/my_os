@@ -20,15 +20,10 @@ struc SectorFrame
 	.Buffer 	resd 1
 	.ReadWrite 	resd 1
 endstruc
+%define KLOADER_BASE  0100h
+%define PROTECT_MODE  0001h
+%define ENABLE_PAGING (1h << 31)
 
-; 电脑启动，ip=0x7c00
-; 写代码，编译 => 放硬盘第一个扇区
-; 布局
-; 0000:0000 - 之后用于存放 main.bin
-; 3000:0000 - 之后用于存放系统信息
-; 4000:0000 - 之前用于栈
-; 4000:0000 - 4000:ffff 存放 sysinit 代码
-;
 start:
 	nop
 	nop
@@ -45,7 +40,6 @@ start:
 	jmp init_main
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 init_main:
-	; 实模式 -> 保护模式
 	call k_init_protected_mode
 go_main:
 	nop
@@ -75,17 +69,26 @@ empty_8042:
 	ret
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 k_enable_protection_paging:
-
+    push dword 0h
+    popfd
+    xor ax, ax
+    mov gs, ax
+    mov es, ax
+    mov fs, ax
+    lgdt [GDT_Reg]
+    mov eax, cr0
+    or eax, PROTECT_MODE
+    mov cr0, eax
     ret
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; GDT
 %macro GDTDesc 6
-	dw %6 	; 段限长1
-	dw %5	; 段基址1
-	db %4	; 段基址2
+	dw %6 	; SegLimit bit 0  -  bit 15
+	dw %5	; SegBase  bit 0  -  bit 15
+	db %4	; SegBase  bit 16 -  bit 23
 	db %3	; P|DPL|S|Type
-	db %2	; G|D/B|L|AVL|段限长2
-	db %1	; 段基址3
+	db %2	; G|D/B|L|AVL|(SegLimit bit 16 - bit 19)
+	db %1	; SegBase  bit 24 -  bit 31
 %endmacro
 ; G = 0 => 1B ~ 1MB	; G = 1 => 4K ~ 4GB
 %define G_0 00h
@@ -134,16 +137,33 @@ k_enable_protection_paging:
 
 ; P = 1 => 段存在于内存中 ; P = 0 => 不存在
 %define P_0 00h
-%define P_0 80h
-
-; L = 1 => 64 位模式 ; L = 0 => 兼容模式
-%define L_0   00h  ;0000 0000
-%define L_1   20h  ;0010 0000
+%define P_1 80h
 
 ; D = 1 => 使用32位地址、32/8 位操作数 ; D = 0 => 使用16位地址、16/8 位操作数
 ; B = 1 => 使用 32 位栈指针 ; B = 0 使用 16 位栈指针
 %define DB_16 00h  ;0000 0000
 %define DB_32 40h  ;0100 0000
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+; L = 1 => 64 位模式 ; L = 0 => 兼容模式
+%define L_0   00h  ;0000 0000
+%define L_1   20h  ;0010 0000
+
+%define AVL_0 00h
+%define AVL_1 10h
+
+%define DPL_0 00h
+%define DPL_3 60h
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+GDT_begin:
+GDTDesc 00h, 00h, 00h, 00h, 0000h, 0000h
+
+GDTDesc 00h, G_1|DB_32|L_0|AVL_0|0fh, P_1|DPL_0|S_1|CodeType10(Execute_Read), 00h, 0000h, 0ffffh
+
+GDTDesc 00h, G_1|DB_32|L_0|AVL_0|0fh, P_1|DPL_0|S_1|DataType2(Read_Write), 00h, 0000h, 0ffffh
+
+times GDT_begin + 1024 - $ db 0
+GDT_end:
+GDT_Reg:
+    dw GDT_end - GDT_begin - 1
+    dd GDT_begin + KLOADER_BASE
 

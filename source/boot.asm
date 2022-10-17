@@ -121,9 +121,7 @@ KLOADER_START:
 incbin "./kloader.bin"
 KLOADER_END: align 10h
 times 2000h-($-$$) db 0
-;------------------------------------------------------
-; incbin "./main.bin"
-; times 4000h-($-$$) db 0
+incbin "./kernel.bin"
 times 80000h - 3 -($-$$) db 0
 db 0EEh, 0h, 0FFh
 ;------------------------------------------------------
