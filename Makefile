@@ -20,17 +20,14 @@ KernelImage.bin: boot.bin
 	$(DD) if=/dev/zero of=$@ bs=18M count=1
 	$(DD) if=boot.bin of=KernelImage.bin seek=0 bs=16M conv=notrunc
 
-boot.bin: kernel.bin kloader.bin source/boot.asm
-	$(NASM) -f bin -o boot.bin source/boot.asm
+boot.bin: kernel.bin kloader.bin source/boot/boot.asm
+	$(NASM) -f bin -o boot.bin source/boot/boot.asm
 
-kloader.bin: source/kloader.asm
-	$(NASM) -f bin -o kloader.bin source/kloader.asm
+kloader.bin: source/boot/kloader.asm
+	$(NASM) -f bin -o kloader.bin source/boot/kloader.asm
 
-sysinit.bin: source/sysinit.asm
-	$(NASM) -f bin -o sysinit.bin source/sysinit.asm
-
-kernel.bin: source/kernel.c scripts/kernel.link.ld
-	$(CC) $(CC_FLAGS) source/kernel.c -o kernel.o
+kernel.bin: source/kernel/kernel.c scripts/kernel.link.ld
+	$(CC) $(CC_FLAGS) source/kernel/kernel.c -o kernel.o
 	$(LD) -T scripts/kernel.link.ld kernel.o -o kernel.bin
 
 clean:

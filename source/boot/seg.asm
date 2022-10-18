@@ -1,99 +1,3 @@
-org 0100h
-
-[bits 16]
-
-struc DAP
-	.PacketSize 	resb 1
-	.Reserved 		resb 1
-	.BlockCount 	resw 1
-	.BufferOffset 	resw 1
-	.BufferSegment 	resw 1
-	.LBNLow 		resd 1
-	.LBNHigh 		resd 1
-endstruc
-
-struc SectorFrame
-	.DriveNum	resd 1
-	.LBNLow 	resd 1
-	.LBNHigh 	resd 1
-	.BlockCount resd 1
-	.Buffer 	resd 1
-	.ReadWrite 	resd 1
-endstruc
-KLOADER_BASE  equ 0100h
-KL_CS equ 018h
-
-%define PROTECT_MODE  0001h
-%define ENABLE_PAGING (1h << 31)
-start:
-	nop
-	nop
-	nop
-	nop
-	cli
-	xor ax, ax
-	mov ds, ax
-	mov es, ax
-	mov ss, ax
-	mov ax, 8fffh
-	mov sp, ax
-	sti
-	jmp init_main
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-init_main:
-	call k_init_protected_mode
-go_main:
-	nop
-	jmp go_main
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-k_init_protected_mode:
-	cli
-	call k_enable_a20
-    call k_enable_protection_paging
-.done:
-	ret
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-k_enable_a20:
-	call empty_8042
-	mov al, 0d1h
-	out 064h, al
-	call empty_8042
-	mov al, 0dfh
-	out 060h, al
-	call empty_8042
-	ret
-empty_8042:
-    jmp $+2
-    jmp $+2
-	in al, 064h
-	test al, 02h
-	jnz empty_8042
-	ret
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-k_enable_protection_paging:
-    push dword 0h
-    popfd
-    xor ax, ax
-    mov ds, ax
-    mov es, ax
-    mov gs, ax
-    mov fs, ax
-    lgdt [GDT_Reg]
-    lidt [IDT_Reg]
-	push eax
-	mov ax, [GDT_Reg]
-	mov eax, [GDT_Reg + 02h]
-	pop eax
-    mov eax, cr0
-    or eax, PROTECT_MODE
-    mov cr0, eax
-.go_pm:
-	push word KL_CS
-	push word .ok
-    retf
-.ok:
-	nop
-	jmp .ok
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;G|D/B|L|AVL|Segment limit 19:16
 %define G_0   00h  ;0000 0000
@@ -172,6 +76,8 @@ GDTDesc 00h, G_1|DB_32|L_0|AVL_0|0fh, P_1|DPL_0|S_1|CodeType10(Execute_Read), 00
 GDTDesc 00h, G_1|DB_32|L_0|AVL_0|0fh, P_1|DPL_0|S_1|DataType2(Read_Write), 00h, 0000h, 0ffffh
 
 GDTDesc 00h, G_1|DB_16|L_0|AVL_0|0fh, P_1|DPL_0|S_1|CodeType10(Execute_Read), 00h, 0000h, 0ffffh
+
+GDTDesc 00h, G_1|DB_16|L_0|AVL_0|0fh, P_1|DPL_0|S_1|DataType2(Read_Write), 00h, 0000h, 0ffffh
 
 times GDT_begin + 1024 - $ db 0
 GDT_end:

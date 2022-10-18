@@ -1,18 +1,8 @@
 org 0000h
 [bits 16]
-section .text
+[section .text]
 
-;Disk Address Packet
-struc DAP
-    .PacketSize 	resb 1
-    .Reserved 		resb 1
-    .BlockCount 	resw 1
-    .BufferOffset 	resw 1
-    .BufferSegment 	resw 1
-    .LBNLow 		resd 1
-    .LBNHigh 		resd 1
-endstruc
-
+%include "./source/boot/dap.asm"
 %define KLOADER_LBNLOW (08h)
 %define KLOADER_BLOCKCOUNT (010h)
 
