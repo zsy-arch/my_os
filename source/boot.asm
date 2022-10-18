@@ -112,10 +112,9 @@ times 1022-($-$$) db 0
 ;------------------------------------------------------
 times 1000h-($-$$) db 0
 KLOADER_START:
-incbin "./kloader.bin"
+    incbin "./kloader.bin"
 KLOADER_END: align 10h
 times 2000h-($-$$) db 0
-incbin "./kernel.bin"
-times 80000h - 3 -($-$$) db 0
-db 0EEh, 0h, 0FFh
+    incbin "./kernel.bin"
+times 80000h-($-$$) db 0
 ;------------------------------------------------------
