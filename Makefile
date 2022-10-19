@@ -1,37 +1,45 @@
-CC = gcc
-CC_FLAGS = -Wall -nostartfiles -nostdlib -nostdinc -ffreestanding -nolibc -nodefaultlibs -fno-pie -c
+# ARCH = riscv64 | x86_64
+ARCH ?= riscv64
+# sudo apt install gcc-riscv64-unknown-elf
+ifeq ($(ARCH), riscv64)
+	CC = riscv64-unknown-elf-gcc
+endif
+ifeq ($(ARCH), x86_64)
+	CC = x86_64-linux-gnu-gcc
+endif
+CFLAGS = -mcmodel=medium -std=gnu99 -Wno-unused -Werror -fno-builtin -Wall -O2 -nostdinc -fno-stack-protector -ffunction-sections -fdata-sections -c
 NASM = nasm
 AS = as
 LD = ld
-OBJDUMP = objdump
-OBJCOPY = objcopy
+OBJCOPY := $(GCCPREFIX)objcopy
+OBJDUMP := $(GCCPREFIX)objdump
 PY = python3
 DD = dd
-BUILD_TOOL = scripts/build.py
 QEMU_IMG = qemu-img
+OUTPUT_DIR = ./build
+QEMU := qemu-system-$(ARCH)
 
-all: KernelImage.bin
+all: kernel
 
 vmdk:
-	$(QEMU_IMG) convert -f raw -O vmdk KernelImage.bin Kernel.vmdk
+	$(QEMU_IMG) convert -f raw -O vmdk $(OUTPUT_DIR)/kernel $(OUTPUT_DIR)/kernel.vmdk
 
-# Kernel.bin: boot.bin sysinit.bin
-KernelImage.bin: boot.bin
-	$(DD) if=/dev/zero of=$@ bs=18M count=1
-	$(DD) if=boot.bin of=KernelImage.bin seek=0 bs=16M conv=notrunc
+kernel: boot.bin
+	$(DD) if=/dev/zero of=$(OUTPUT_DIR)/kernel bs=18M count=1
+	$(DD) if=$(OUTPUT_DIR)/boot.bin of=$(OUTPUT_DIR)/kernel seek=0 bs=16M conv=notrunc
 
-boot.bin: kernel.bin kloader.bin source/boot/boot.asm
-	$(NASM) -f bin -o boot.bin source/boot/boot.asm
+boot.bin: kernel.bin kloader.bin source/arch/$(ARCH)/boot.asm
+	$(NASM) -f bin -o $(OUTPUT_DIR)/boot.bin source/arch/$(ARCH)/boot.asm
 
-kloader.bin: source/boot/kloader.asm
-	$(NASM) -f bin -o kloader.bin source/boot/kloader.asm
+kloader.bin: source/arch/$(ARCH)/kloader.asm
+	$(NASM) -f bin -o $(OUTPUT_DIR)/kloader.bin source/arch/$(ARCH)/kloader.asm
 
 kernel.bin: source/kernel/kernel.c scripts/kernel.link.ld
-	$(CC) $(CC_FLAGS) source/kernel/kernel.c -o kernel.o
-	$(LD) -T scripts/kernel.link.ld kernel.o -o kernel.bin
+	$(CC) $(CFLAGS) source/kernel/kernel.c -o $(OUTPUT_DIR)/kernel.o
+	$(LD) -T scripts/kernel.link.ld $(OUTPUT_DIR)/kernel.o -o $(OUTPUT_DIR)/kernel.bin
 
 clean:
-	rm -f ./*.bin
-	rm -f ./*.o
-	rm -f ./*.elf
-	rm -f ./*.vmdk
+	rm -f $(OUTPUT_DIR)/*.bin
+	rm -f $(OUTPUT_DIR)/*.o
+	rm -f $(OUTPUT_DIR)/*.elf
+	rm -f $(OUTPUT_DIR)/*.vmdk

@@ -8,14 +8,14 @@ SECTIONS
     . = 0x100000;
     .text : {
         /* Place the code in boot.asm.o before all other code */
-        kernel.o(.text);
+        ./build/kernel.o(.text);
         *(.text);
     }
 
     /* Place the data after the code */
     .data : SUBALIGN(2) {
-        kernel.o(.data);
-        kernel.o(.rodata*);
+        ./build/kernel.o(.data);
+        ./build/kernel.o(.rodata*);
     }
 
     /* Place the uninitialised data in the area after our bootloader
